@@ -1,19 +1,12 @@
-from playwright.sync_api import sync_playwright
 import function
 
-p = sync_playwright().start()
+UA_LIST = function.generate_ua()
 
-browser = p.chromium.launch(headless=False,executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe")
-context = browser.new_context()
-page = browser.new_page()
-page.goto("https://poshmark.ca/login")
-
-
+browser, page, p = function.open_stealth(UA_LIST)
 function.login(page)
 function.navigate_to_following(page)
 
+function.close_browser(browser, p)
 
-
-browser.close()
-p.stop()
-
+#<span aria-live="polite" aria-labelledby="recaptcha-accessible-status"></span>
+#<div class="recaptcha-checkbox-checkmark" role="presentation" style=""></div>

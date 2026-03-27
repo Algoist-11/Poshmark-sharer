@@ -4,9 +4,40 @@ import pathlib
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
 from faker import Faker
 import random
+import time
 
+#add auto follow people
+#add when verification code is wrong
+#export to exe for easy use
+#maybe release async version in the future
+
+def day_limit():
+    global total_count
+    if not pathlib.Path('time.json').exists() or pathlib.Path('time.json').stat().st_size == 0:
+        current_time = time.localtime()
+        with open('time.json', 'w') as f:
+            json.dump({'last_time_day': current_time.tm_yday,'last_time_year': current_time.tm_year, 'count': 0}, f)
+        total_count = 0
+    else:
+        with open('time.json', 'r') as f:
+            data = json.load(f)
+            total_count = data['count']
+            last_time_day = data['last_time_day']
+            last_time_year = data['last_time_year']
+        
+        current_time = time.localtime()
+        if total_count >= 8000:
+            if current_time.tm_yday == last_time_day and current_time.tm_year == last_time_year:
+                print('You have reached the daily sharing limit of 8000. Please try again tomorrow.')
+                sys.exit(1)
+            else:
+                total_count = 0
+                with open('time.json', 'w') as f:
+                    json.dump({'last_time_day': current_time.tm_yday,'last_time_year': current_time.tm_year, 'count': 0}, f)
+        
 
 def initialize():
+    
     global setting
     print('Welcome! This program will help you bulk share items from your following/followers on Poshmark. Please make sure you have installed the Google Chrome browser and have stable internet connection.')
     
@@ -29,7 +60,7 @@ def settings():
         try:
             li = input("Do you want to share your following or followers? (Enter 'following' or 'followers'): ")
             if li.lower() not in ['following', 'followers']:
-                raise ValueError("Invalid input. Please enter 'following' or 'followers'.")
+                raise ValueError("Invalid input. Please enter one of the available options.")
             else:
                 break
         except ValueError as e:
@@ -180,11 +211,12 @@ def navigate_to_following(page):
             return self
         def __next__(self):
             self.accounts = self.page.locator('p.follow__action__follower')
-            self.current = self.accounts.nth(self.count)
             if self.count >= self.accounts.count()-1:
                 if self.accounts.count() == 0:
                     print('No following accounts found. Please check your account and try again.')
                 raise StopIteration
+            self.current = self.accounts.nth(self.count)
+            
             self.current.click(delay=500)
             share_1user(page)
             self.count+=1
@@ -205,11 +237,11 @@ def navigate_to_followers(page):
             return self
         def __next__(self):
             self.accounts = self.page.locator('p.follow__action__follower')
-            self.current = self.accounts.nth(self.count)
             if self.count >= self.accounts.count()-1:
                 if self.accounts.count() == 0:
                     print('No follower accounts found. Please check your account and try again.')
                 raise StopIteration
+            self.current = self.accounts.nth(self.count)
             self.current.click(delay=500)
             share_1user(page)
             self.count+=1
@@ -218,7 +250,11 @@ def navigate_to_followers(page):
     for i in selectFollower(page):
         pass
 
+
+
+
 def share_1user(page):
+    global total_count
     class sharer(object):
         def __init__(self, page):
             self.page = page
@@ -227,23 +263,34 @@ def share_1user(page):
             return self
         def __next__(self):
             self.items = self.page.locator('.share-gray-large')
+            if self.count >= self.items.count()-1:
+                print('No more items to share')
+                raise StopIteration
             self.current = self.items.nth(self.count)
             # print('count:',self.count)
             # print('items count:',self.items.count()-1)
             
-            if self.count >= self.items.count()-1:
-                print('No more items to share')
-                raise StopIteration
             self.current.click(delay=500)
             self.page.locator('//li[@class="internal-share"]/a[@data-et-name="share_poshmark"]').click(delay=1000)
             self.count+=1
 
-    share = sharer(page)
-    for i in share:
-        pass
+    
+    for i in sharer(page):
+        if total_count >= 8000:
+            print('Reached daily limit, shutting down program.')
+            sys.exit(1)
+        else:
+            total_count += 1
+            pass
     print('Finished sharing all items of this user')
-    # total_count += share.count
+    
 
 def close_browser(browser, p):
+    global total_count
+    
+    current_time = time.localtime()
+    with open('time.json', 'w') as f:
+        json.dump({'last_time_day': current_time.tm_yday,'last_time_year': current_time.tm_year, 'count': total_count}, f)
     browser.close()
     p.stop()
+    sys.exit(1)

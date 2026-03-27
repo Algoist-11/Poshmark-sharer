@@ -1,5 +1,7 @@
 *test.py
 *state.json
 *credentials.json
+*settings.json
+*time.json
 
 __pycache__/*

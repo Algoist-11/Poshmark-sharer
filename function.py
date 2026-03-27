@@ -5,12 +5,60 @@ from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeo
 from faker import Faker
 import random
 
-#to limit sharing to 8k per day
-#to add try/except when following/followers list is empty
-#export to exe? pip install?
-#add choose following or follower
-#add custom browser path
-#maybe release async version in the future
+
+def initialize():
+    global setting
+    print('Welcome! This program will help you bulk share items from your following/followers on Poshmark. Please make sure you have installed the Google Chrome browser and have stable internet connection.')
+    
+    if not pathlib.Path('settings.json').exists() or pathlib.Path('settings.json').stat().st_size == 0:
+        print("To use this program, let's first initialize your settings. You can always change these settings later.")
+        settings()
+    else:
+        use_default = input("Settings already exist. Do you want to use the existing settings? (y/n): ")
+        if use_default.lower() == 'y':
+            with open('settings.json', 'r') as f:
+                setting = json.load(f)
+        else:
+            settings()
+
+
+
+def settings():
+        
+    while True:
+        try:
+            li = input("Do you want to share your following or followers? (Enter 'following' or 'followers'): ")
+            if li.lower() not in ['following', 'followers']:
+                raise ValueError("Invalid input. Please enter 'following' or 'followers'.")
+            else:
+                break
+        except ValueError as e:
+            print(e)
+    
+    while True:
+        try:
+            browse = input("Is your chrome browser installed in the default path? (y/n): ")
+            if browse.lower() not in ['y', 'n']:
+                raise ValueError("Invalid input. Please enter 'y' or 'n'.")
+            else:
+                if browse.lower() == 'n':
+                    path = input("Please enter the full path to your chrome executable (e.g., C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe): ")
+                    if not pathlib.Path(path).exists():
+                        raise ValueError("The specified path does not exist. Please check the path and try again.")
+                    else:
+                        break
+                elif browse.lower() == 'y':
+                    path = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+                    break
+        except ValueError as e:
+            print(e)
+    
+
+    with open('settings.json', 'w') as f:
+        setting = {'li': li.lower(), 'path': path}
+        json.dump(setting, f)
+    
+
 
 def generate_ua():
     fake = Faker()
@@ -20,11 +68,11 @@ def generate_ua():
     return UA_LIST
 
 
-def open_stealth(UA_LIST):
+def open_stealth(UA_LIST,path):
     p = sync_playwright().start()
 
     #open in stealth mode
-    browser = p.chromium.launch(headless=False,executable_path=r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    browser = p.chromium.launch(headless=False,executable_path=path,
                                 args=[
                     '--disable-blink-features=AutomationControlled',
                     '--disable-dev-shm-usage',
@@ -52,9 +100,12 @@ def open_stealth(UA_LIST):
     page.goto("https://poshmark.ca/login")
     return browser,page,p
 
+
+
+
 def login(page):
     #create credentials.json if not exist, and store the credentials for future use
-    global user, credentials
+    global user, pwd
     if not pathlib.Path('credentials.json').exists() or pathlib.Path('credentials.json').stat().st_size == 0:
         user = input('Please enter your username or email: ')
         pwd = input('Please enter your password: ')
@@ -65,9 +116,9 @@ def login(page):
             credentials = json.load(f)
             user = credentials['username']
             pwd = credentials['password']
-        page.wait_for_timeout(5015)
+        page.wait_for_timeout(3015)
 
-    #————————————————————————————————————————————————————————
+
     
     try:
         page.locator('#login_form_username_email').fill(user)
@@ -110,13 +161,13 @@ def login(page):
     page.get_by_role("button", name="Done").click()
     page.wait_for_url("https://poshmark.ca/feed?login=true")
 
-    # If the user input email, extract the username from the email————————————————————————
+    # If the user input email, extract the username from the email
     if '@' in user:
-        credentials['user'] = page.locator('//img[@class="user-image"]/@alt').inner_text()
-        json.dump(credentials, open('credentials.json', 'w'))
+        user = page.locator('img.user-image').get_attribute('alt')
+        with open('credentials.json', 'w') as f:
+            json.dump({'username': user, 'password': pwd}, f)
         
-
-
+        
 
 def navigate_to_following(page):
     
@@ -130,9 +181,9 @@ def navigate_to_following(page):
         def __next__(self):
             self.accounts = self.page.locator('p.follow__action__follower')
             self.current = self.accounts.nth(self.count)
-            # if self.current == self.accounts.last:
-            #     self.page.locator("footer").scroll_into_view_if_needed()
             if self.count >= self.accounts.count()-1:
+                if self.accounts.count() == 0:
+                    print('No following accounts found. Please check your account and try again.')
                 raise StopIteration
             self.current.click(delay=500)
             share_1user(page)
@@ -142,8 +193,8 @@ def navigate_to_following(page):
     for i in selectFollowing(page):
         pass
 
-#————————————————————————————————————————————————————————————————————
-def navigate_to_follower(page):
+
+def navigate_to_followers(page):
     
     class selectFollower(object):
         def __init__(self, page):
@@ -155,9 +206,9 @@ def navigate_to_follower(page):
         def __next__(self):
             self.accounts = self.page.locator('p.follow__action__follower')
             self.current = self.accounts.nth(self.count)
-            # if self.current == self.accounts.last:
-            #     self.page.locator("footer").scroll_into_view_if_needed()
             if self.count >= self.accounts.count()-1:
+                if self.accounts.count() == 0:
+                    print('No follower accounts found. Please check your account and try again.')
                 raise StopIteration
             self.current.click(delay=500)
             share_1user(page)
@@ -177,8 +228,8 @@ def share_1user(page):
         def __next__(self):
             self.items = self.page.locator('.share-gray-large')
             self.current = self.items.nth(self.count)
-            print('count:',self.count)
-            print('items count:',self.items.count()-1)
+            # print('count:',self.count)
+            # print('items count:',self.items.count()-1)
             
             if self.count >= self.items.count()-1:
                 print('No more items to share')
@@ -187,9 +238,11 @@ def share_1user(page):
             self.page.locator('//li[@class="internal-share"]/a[@data-et-name="share_poshmark"]').click(delay=1000)
             self.count+=1
 
-    for i in sharer(page):
+    share = sharer(page)
+    for i in share:
         pass
     print('Finished sharing all items of this user')
+    # total_count += share.count
 
 def close_browser(browser, p):
     browser.close()

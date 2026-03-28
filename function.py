@@ -8,7 +8,6 @@ import time
 
 #add auto follow people
 #add when verification code is wrong
-#export to exe for easy use
 #maybe release async version in the future
 
 def day_limit():
@@ -58,8 +57,8 @@ def settings():
         
     while True:
         try:
-            li = input("Do you want to share your following or followers? (Enter 'following' or 'followers'): ")
-            if li.lower() not in ['following', 'followers']:
+            li = input("Do you want to share your following, followers, or a custom list of sellers? (Enter 'following', 'followers', or 'custom'): ")
+            if li.lower() not in ['following', 'followers', 'custom']:
                 raise ValueError("Invalid input. Please enter one of the available options.")
             else:
                 break
@@ -250,7 +249,13 @@ def navigate_to_followers(page):
     for i in selectFollower(page):
         pass
 
-
+def share_custom(page):
+    custom_list = tuple(set(input('Please enter the list of users for whom you would like to share their closets (be sure to use USERNAME and NOT email, each one separated by a comma), you can enter your own username to self-share as well: ').split(',')))
+    page = page
+    for i in custom_list:
+        i.strip()
+        page.goto(f"https://poshmark.ca/closet/{user}")
+        share_1user(page)
 
 
 def share_1user(page):

@@ -18,6 +18,8 @@ try:
             function.navigate_to_following(page)
         elif function.setting['li'] == 'followers':
             function.navigate_to_followers(page)
+        elif function.setting['li'] == 'custom':
+            function.share_custom(page)
         
         else:
             print('Something went wrong with the settings. Please delete the settings.json file and try again.')

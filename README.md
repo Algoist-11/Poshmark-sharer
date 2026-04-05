@@ -19,10 +19,6 @@ You can stop the program by pressing ctrl + C twice.
 
 This tool limits operating speed to avoid having your account identified as bot, as well as places a limit of 8000 shares per day, a safe value close to Poshmark's daily share limit (the exact value is not publicized).
 
-
-This is still a work in progress. Future functions will include:
-- self share, or custom share for a list of users
-- sharing to relevant parties based on tag and item name
-- bulk following seller accounts
+Functions such as self share, custom sharing a list of users, and sharing to relevant parties have been developed, although the exe file has yet to be updated. Stay tuned!
 
 This is my first open-source project, if there are any suggestions or issues, let me know!
